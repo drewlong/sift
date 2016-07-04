@@ -1,10 +1,15 @@
-Options: <br />
-&nbsp;	-e		Email Mode<br />
-			Usage: cull -e http://example.com<br />
-	-s		Search Mode:<br />
-			Usage: cull -s http://example.com -t script -a src<br />
-		-t	Type of element (div, a, h1, etc..)<br />
-		-a	Attribute (href, src, class, etc..)<br />
-		-i	Includes option (ex. -i <search term>)<br />
-	-j		JSON Mode:<br />
-		-r	Request (ex. -r )<br />
+<h2>Siftr - Webscraping made easier</h2>
+
+Usage: 
+siftr -r http://example.com	(get raw html/response)
+siftr -e http://example.com	(harvest email addresses)
+siftr -s http//example.com -t a -a href	(search mode -- type 'a', attribute 'href')
+
+Options
+-r	Raw response
+-e	Email harvest mode
+-s	Search mode
+	-t Type of element (a, div, script, etc...)
+	-a Attribute (href, src, etc...)
+	-i Includes (string to compare)
+-j	JSON pretty generate response
