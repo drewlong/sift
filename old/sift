@@ -1,0 +1,383 @@
+#!/usr/bin/ruby
+require 'rubygems'
+require 'anemone'
+require 'colorize'
+require 'mechanize'
+require 'open-uri'
+require 'json'
+
+$banner = %q[_________________________
+::::::::(_):::/ _|::| |::  
+:::::::::::::| |::::| |::
+:/ __|::| |::|  _|::| __|
+:\__ \::| |::| |::::| |::
+:|___/::|_|::| |::::.\__|
+:WEB-SCRAPING| |FRAMEWORK         
+:::::::::::::|_|:::::::::
+^^^^^^^^^^^^^^^^^^^^^^^^^
+].yellow
+def cls
+	system("clear")
+	puts $banner
+end
+def reset
+	cls
+	$inp 	= ""
+	$url 	= ""
+	$base 	= ""
+	$msg	= "Settings reset successfully"
+end
+def is_email
+	begin
+		Anemone.crawl($url) do |anemone|
+		  anemone.on_every_page do |page|
+			email = /\A[^@\s]+@([-a-zA-Z0-9]{1,63}\.)+[a-zA-Z0-9]{2,63}\z/
+			words = page.body.to_s.gsub("\n", " ").gsub("\t", " ").split(" ")
+			$emails = []
+			@words = []
+			words.each {|w| @words << w.split(">",2).last.gsub(%r{</?[^>]+?>}, '')}
+			@words.each do |word|
+				if ( word =~ email )
+				  $emails << word
+				end
+			end
+			puts $emails    
+		  end
+		end
+	rescue
+	end
+end
+
+def search_tree(x)
+	y = x.strip
+	if x.include? " "
+		x = x.split(" ")
+		y = x[0]
+	end
+	begin
+		case y
+			when 'exit'
+				start
+			when "options"
+				cls
+				$msg = %q[
+	raw		Display Raw HTML
+	type	<input>	Lists elements of type specified
+	attr	<input>	Lists elements with attribute specified
+	inc	<input>	Sort list by identifier (like Ruby .include?)
+	Usage:
+		type div attr class inc pass
+	]
+			when "raw"
+				raw = open($url)
+				page = Nokogiri::HTML(raw.read, &:noblanks)
+				$msg = page
+			when "clear"
+				$msg = ""			
+			when "type"
+
+				if x[2] == "attr"
+					$msg = []
+					req  = "$items = "+$base+".css(x[1]).map.to_a"
+					eval(req)
+					if x[4] == "inc"
+						$inc = x.last.strip
+						$items.each do |item|
+							if item.attributes[x[3]].to_s.include? $inc
+								$msg << item.attributes[x[3]].to_s
+							end
+						end					
+					else		
+						$items.each do |item|
+							$msg << item.attributes[x[3]].to_s
+						end
+					end
+				elsif x[2] == "inc"
+					$msg = []
+					req  = "$items = "+$base+".css(x[1]).map.to_a"
+					eval(req)			
+					$inc = x.last.strip
+					$items.each do |item|
+						if item.to_s.include? $inc
+							$msg << item.to_s.gsub("\t", "").gsub("\n", "")
+						end
+					end		
+				else			
+					req  = $base+".css(x[1]).map.to_a"
+					res  = eval(req)
+					$msg = []
+					res.each do |r|
+						$msg << r.to_s.gsub("\t", "").gsub("\n", "")
+					end
+				end
+				
+			when "attr"
+				if x[2] == "inc"
+					$msg = []
+					$items = []
+					req = $base+'.css("*").map.to_a.each {|item| item.attributes[x[1]].to_s == "" ? i=0 : $items << item.attributes[x[1]].to_s+"\n"}'
+					eval(req)
+					$inc = x[3]
+					$items.each do |item|
+						if item.include? $inc
+							$msg << item.to_s.gsub("\t", "").gsub("\n", "")
+						end
+					end
+				else
+					req = $base+'.css("*").map.to_a.each {|item| item.attributes[x[1]].to_s == "" ? i=0 : $msg << item.attributes[x[1]].to_s+"\n"}'
+					eval(req)
+				end
+		end
+	rescue => $msg
+	end
+end
+def search
+	$bot	= Mechanize.new
+	$base 	= "$bot.get($url).search('html')"
+	while true
+		cls
+		if $msg.kind_of?(Array)
+			$msg.each do |m|
+				line  = m.split(">")
+				line.each do |l|
+					puts l
+				end
+			end
+		else
+			puts $msg
+		end
+		$msg = []
+		print "sift:/".red+"SEARCH".green+"# "
+		$inp = STDIN.gets.strip
+		search_tree($inp)
+	end
+end
+def par_create
+	# Create request param
+	if $params == "" or $params == nil
+		$params = Hash.new
+	end
+		cls
+		puts "Type param below (ex. ItemId)"
+		$msg = ""
+		print "sift:/".red+"JSON/".cyan+"PARAM/".green+"# "
+		$par = STDIN.gets.strip
+		if $par == "" or $par == nil
+			$msg = "No param specified"
+		else
+			$params[$par] = ""
+			$msg = "{'#{$par}' => nil}	Success!"
+		end
+end
+def par_eq
+	# Set param value 
+	
+	if $params == "" or $params == nil
+		$msg = "Create param first"
+	end
+		cls
+		$params.each {|k, v| p k+" => "+v}
+		puts "Usage: <param> => <value>".yellow
+		$msg = ""
+		print "sift:/".red+"JSON/".cyan+"PARAM/".green+"# "
+		$par = STDIN.gets.strip
+		$par = $par.split("=>")
+		$params[$par[0].strip] = $par[1].strip
+		$msg = "{'#{$par[0].strip}' => #{$params[$par[0].strip]}}	Success!"
+end
+def par_del
+	cls
+	$params.each {|k, v| p k}
+	puts "Type the name of the param to delete".yellow
+	print "sift:/".red+"JSON/".cyan+"PARAM/".green+"# "
+	$par = STDIN.gets.strip
+	if $par != ""
+		$params.delete($par)
+		$msg = $par+" has been deleted."
+	else
+		$msg = "No param specified, nothing deleted."
+	end
+end
+def par_show
+	if $params != nil
+		if $params.length < 1
+			$msg = "No params found."
+		else
+			$params.each {|k, v| $msg << k+" => "+v+"\n"}
+		end
+	else
+		$msg = "No params found."
+	end
+end
+def json_tree(x)
+	y = x.strip
+	if x.include? " "
+		x = x.split(" ")
+		y = x[0]
+	end
+	case y
+		when "options"
+			$msg = %q[
+options		Opens this dialogue
+dom <url>	Specify domain
+par 		Create/Add parameter
+par eq		Parameter equals (change param value)
+par show	Display list of params & values
+par del		Deletes 
+req		Opens tool to paste JSON request
+run req		Runs pasted request, returns raw JSON
+run req pg	Same as run, returns formatted JSON
+gen		Generates request based on params & domain	
+]
+		when "dom"
+			if x.kind_of?(Array)
+				if x[1] == nil or x[1] == ""
+					$msg = 'Please enter a base url ("http://example.com/api")'
+				else
+					$dom = x[1]	
+				end
+			else
+				$msg = 'Please enter a base url ("http://example.com/api")'
+			end
+		when "par"
+			if x.kind_of?(Array)
+				case x[1]
+					when "eq"
+						par_eq
+					when "del"
+						par_del
+					when "show"
+						par_show
+				end
+			else
+				par_create
+			end
+		when "req"
+			puts "Paste request: ".green
+			$jreq = STDIN.gets.chomp
+		when "run"
+			if x[1] == "req"
+				if x[2] == "pg"
+					begin
+						raw  = open($jreq)
+						pg   = raw.read
+						js 	 = JSON.parse(pg)
+						$msg = JSON.pretty_generate(js)
+					rescue => $msg
+						
+					end
+				else
+					begin
+						raw  = open($jreq)
+						pg   = raw.read
+						$msg = JSON.parse(pg)
+
+					rescue => $msg
+						
+					end
+				end
+			else
+				# run req based on params
+			end
+		when "exit"
+			start
+		else
+			$msg = "Unrecognized option"
+	end
+end
+def json_main
+	while true
+		cls
+		puts $msg
+		$msg = ""
+		print "sift:/".red+"JSON".cyan+"# "
+		$inp = STDIN.gets.strip
+		json_tree($inp)		
+	end
+end
+def set_url
+	cls
+	puts $msg
+	print "sift:/".red+"URL".cyan+"# "
+	$url = STDIN.gets.strip
+	if $url.include? "http://" or $url.include? "https://"
+		$msg = "(URL set successfully)"
+	elsif $url == "exit" or $url == "back"
+		start
+	else
+		$msg = "Enter full url (http://example.com)"
+		set_url
+	end	
+	$msg = "(URL set successfully)"
+end
+
+def main_tree(x)
+	case x
+		when "url"
+			set_url
+		when "search"
+		
+			if $url == "" or $url == nil
+				$msg = "Set URL first (option: url)"
+			else
+				search
+			end
+		when "json"
+			json_main
+		when "reset"
+			reset
+		when "clear"
+			$msg = ""
+		when "exit"
+			abort()
+		else
+			$msg = "Unrecognized option"
+	end
+end
+def start
+	$msg = ""
+	while true
+		cls
+		puts $msg
+		$msg = ""
+		print "sift:/".red+"# "
+		$inp = STDIN.gets.strip
+		main_tree($inp)
+	end
+end
+if ARGV.length < 1
+	start
+else
+	$bot	= Mechanize.new
+	$base 	= "$bot.get($url).search('html')"
+	$args = ""
+	flag = 0
+	ARGV.each do |a|
+		case a
+			when "-u"
+				$url = ARGV[ARGV.index(a)+1]
+			when "-t"
+				type = ARGV[ARGV.index(a)+1]
+				$args << "type "+type+" "
+			when "-a"
+				attr = ARGV[ARGV.index(a)+1]
+				$args << "attr "+attr+" "
+			when "-i"
+				inc = ARGV[ARGV.index(a)+1]
+				$args << "inc "+inc						
+			when "-e"
+				flag = 1
+				$url = ARGV[ARGV.index(a)+1]
+				is_email
+			when "-r"
+				$url = ARGV[ARGV.index(a)+1]
+				raw = open($url)
+				puts raw.read
+		end
+	end
+	if flag == 0
+		search_tree($args.strip)
+		puts $msg
+	else
+	end	
+end

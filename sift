@@ -1,0 +1,52 @@
+require 'open-uri'
+
+$help_banner = "
+Options;
+	-e		Email Mode
+			Usage: sift -e http://example.com
+	-s		Search Mode:
+			Usage: sift -s http://example.com -t script -a src
+		-t	Type of element (div, a, h1, etc..)
+		-a	Attribute (href, src, class, etc..)
+		-i	Includes option (ex. -t a -i imgur)
+	-j		JSON Mode:
+	-r	Raw HTML
+"
+
+def main_tree(opts)
+	opts.each do |opt|
+		case opt
+			when "-r"
+				raw = open(ARGV[ARGV.index(opt)+1])
+				puts raw.read
+			when "-e"
+				load	'modules/email.rb'
+				crawl = Email_Mod.new
+				crawl.act(opts[opts.index(opt)+1])
+			when "-s"
+				load	'modules/search.rb'
+				search = Search_mod.new
+				search.analyze(ARGV[ARGV.index(opt)+1..-1])
+			when "-j"
+				load 'modules/json.rb'
+				json = JSON_mod.new
+				json.act(ARGV[ARGV.index(opt)+1])
+			when "--help"
+				puts $help_banner
+		end
+	end
+end
+main_tree(ARGV[0..-1])
+
+$help_banner = "
+Options;
+	-e		Email Mode
+			Usage: sift -e http://example.com
+	-s		Search Mode:
+			Usage: sift -s http://example.com -t script -a src
+		-t	Type of element (div, a, h1, etc..)
+		-a	Attribute (href, src, class, etc..)
+		-i	Includes option (ex. -i <search term>)
+	-j		JSON Mode:
+		-r	Request (ex. -r )
+"
