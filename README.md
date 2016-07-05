@@ -1,5 +1,6 @@
 <h2>Siftr - Webscraping made easier</h2>
-
+<hr />
+Siftr is a command line tool that incorporates easily into your programming workflow, making it incredibly easy to track down elements during your testing/scouting phase. 
 Usage: <br>
 <hr />
 siftr -r http://example.com &nbsp; &nbsp; (get raw html/response) <br>
